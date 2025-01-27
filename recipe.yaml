@@ -57,6 +57,10 @@ Manifests:
     Run:
       RequiresPrivilege: true
       Script: |-
+        if ! grep -q 'certificateFilePath:.*parsec' /greengrass/v2/config/effectiveConfig.yaml; then
+          sed -i '/certificateFilePath:/c\  certificateFilePath: "parsec:import=/greengrass/v2/thingCert.crt;object=;type=cert"' "/greengrass/v2/config/effectiveConfig.yaml"
+        fi
+
         echo Activating virtual environment
         . venv/bin/activate
         echo Running the component
@@ -67,34 +71,6 @@ Manifests:
             echo Restarting the Greengrass service ...
             sudo systemctl restart greengrass.service
         fi
-  Artifacts:
-  - Uri: s3://BUCKET_NAME/COMPONENT_NAME/COMPONENT_VERSION/certificate-rotator.zip
-    Unarchive: ZIP
-    Permission:
-      Read: ALL
-- Platform:
-    os: windows
-  Lifecycle:
-    Install:
-      # If the Python cryptography package wheel has to be built, the install
-      # can take several minutes. Normally though, we use a pre-built wheel. 
-      Timeout: 900
-      Script: >-
-        echo Creating virtual environment &
-        python -m venv venv &
-        echo Activating virtual environment &
-        .\venv\Scripts\activate.bat &
-        echo Upgrading pip &
-        pip install pip --upgrade &
-        echo Installing package requirements &
-        pip install -r {artifacts:decompressedPath}/certificate-rotator/requirements.txt
-    Run:
-      RequiresPrivilege: true
-      Script: >-
-        echo Activating virtual environment &
-        .\venv\Scripts\activate.bat &
-        echo Running the component &
-        {artifacts:decompressedPath}\\certificate-rotator\\scripts\\run.cmd {artifacts:decompressedPath}/certificate-rotator/main.py
   Artifacts:
   - Uri: s3://BUCKET_NAME/COMPONENT_NAME/COMPONENT_VERSION/certificate-rotator.zip
     Unarchive: ZIP
