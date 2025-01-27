@@ -13,6 +13,7 @@ from awsiot.greengrasscoreipc.clientv2 import GreengrassCoreIPCClientV2
 from effective_config import EffectiveConfig
 from pubsub import PubSub
 from pki_hsm import PKIHSM
+from pki_parsec import PKIPARSEC
 from pki_file import PKIFile
 from state_idle import StateIdle
 from state_getting_job import StateGettingJob
@@ -34,13 +35,17 @@ class StateMachine():
 
         # Instantiate the correct PKI based on the configuration
         effective_config = EffectiveConfig()
-        pkcs = effective_config.private_key_path().startswith('pkcs11:object=')
-        self._pki = PKIHSM(ipc_client) if pkcs else PKIFile(ipc_client)
+        if effective_config.private_key_path().startswith('pkcs11:object='):
+            self._pki = PKIHSM(ipc_client)
+        elif effective_config.private_key_path().startswith('parsec:object='):
+            self._pki = PKIPARSEC()
+        else:
+            PKIFile(ipc_client)
 
         self._job_id = None
 
     @property
-    def pki(self) -> typing.Union[PKIFile, PKIHSM]:
+    def pki(self) -> typing.Union[PKIFile, PKIHSM, PKIPARSEC]:
         """ Getter for the PKI """
         return self._pki
 
