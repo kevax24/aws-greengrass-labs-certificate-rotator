@@ -14,10 +14,10 @@ class EffectiveConfig():
     def __init__(self):
         # Get the Greengrass root path from our working directory
         if platform.system() == 'Windows':
-            gg_root_path = os.getcwd().split('\\greengrass\\v2')[0]
+            gg_root_path = os.getcwd().split('\\work')[0]
             file_path = '\\config\\effectiveConfig.yaml'
         else:
-            gg_root_path = os.getcwd().split('/greengrass/v2')[0]
+            gg_root_path = os.getcwd().split('/work')[0]
             file_path = '/config/effectiveConfig.yaml'
 
         self._yaml_file_path = f'{gg_root_path}{file_path}'

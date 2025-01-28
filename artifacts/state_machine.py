@@ -40,7 +40,7 @@ class StateMachine():
         elif effective_config.certificate_file_path().startswith('parsec:'):
             self._pki = PKIPARSEC()
         else:
-            PKIFile(ipc_client)
+            self._pki = PKIFile(ipc_client)
 
         self._job_id = None
 
