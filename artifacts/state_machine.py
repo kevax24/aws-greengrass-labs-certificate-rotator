@@ -28,6 +28,7 @@ class StateMachine():
         self._states = {}
         self._state = None
         self._timer = None
+        self._parsec = True
 
         ipc_client = self._create_ipc_client()
 
@@ -37,7 +38,7 @@ class StateMachine():
         effective_config = EffectiveConfig()
         if effective_config.private_key_path().startswith('pkcs11:object='):
             self._pki = PKIHSM(ipc_client)
-        elif effective_config.certificate_file_path().startswith('parsec:'):
+        elif self._parsec:
             self._pki = PKIPARSEC()
         else:
             self._pki = PKIFile(ipc_client)
