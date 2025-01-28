@@ -1,7 +1,7 @@
 ---
 RecipeFormatVersion: '2020-01-25'
-ComponentName: COMPONENT_NAME
-ComponentVersion: COMPONENT_VERSION
+ComponentName: com.doka.CertificateRotator
+ComponentVersion: 0.0.1
 ComponentDescription: Certificate Rotator
 ComponentPublisher: Amazon
 ComponentConfiguration:
@@ -45,7 +45,10 @@ Manifests:
       # If the Python cryptography package wheel has to be built, the install
       # can take several minutes. Normally though, we use a pre-built wheel. 
       Timeout: 900
+      RequiresPrivilege: true
       Script: |-
+        echo Install dependencies
+        apt install python3-pip python3-venv -y
         echo Creating virtual environment
         python3 -m venv venv
         echo Activating virtual environment
@@ -53,18 +56,26 @@ Manifests:
         echo Upgrading pip
         pip install pip --upgrade
         echo Installing package requirements
-        pip3 install -r {artifacts:decompressedPath}/certificate-rotator/requirements.txt
+        cp -r {artifacts:decompressedPath}/com.doka.CertificateRotator/ /home/ggc_user/
+        pip3 install -r {artifacts:decompressedPath}/com.doka.CertificateRotator/com.doka.CertificateRotator/requirements.txt
     Run:
       RequiresPrivilege: true
       Script: |-
-        if ! grep -q 'certificateFilePath:.*parsec' /greengrass/v2/config/effectiveConfig.yaml; then
-          sed -i '/certificateFilePath:/c\  certificateFilePath: "parsec:import=/greengrass/v2/thingCert.crt;object=;type=cert"' "/greengrass/v2/config/effectiveConfig.yaml"
-        fi
+        while true; do
+          output=$(sudo -u ggc_user bash -c '~/parsec-tool ping' 2>&1)
+          if echo "$output" | grep -q "Service wire protocol version"; then
+            echo "Parsec service is ready."
+            break
+          else
+            echo "Waiting for Parsec service to start..."
+            sleep 2
+          fi
+        done
 
         echo Activating virtual environment
         . venv/bin/activate
         echo Running the component
-        python3 -u {artifacts:decompressedPath}/certificate-rotator/main.py
+        python3 -u {artifacts:decompressedPath}/com.doka.CertificateRotator/com.doka.CertificateRotator/main.py
         EC=$?
         echo $EC
         if [ $EC -eq 0 ] ; then
@@ -72,7 +83,7 @@ Manifests:
             sudo systemctl restart greengrass.service
         fi
   Artifacts:
-  - Uri: s3://BUCKET_NAME/COMPONENT_NAME/COMPONENT_VERSION/certificate-rotator.zip
+  - Uri: s3://cloudgateway-ktmvdevices-56k/com.doka.CertificateRotator/0.0.1/com.doka.CertificateRotator.zip
     Unarchive: ZIP
     Permission:
       Read: ALL
