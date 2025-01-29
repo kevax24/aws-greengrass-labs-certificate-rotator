@@ -27,7 +27,7 @@ class PKIPARSEC():
         if 'object=' in self._effective_config.certificate_file_path():
             self._label = self._effective_config.certificate_file_path().split('object=')[1].split(';')[0]
         else:
-            self._label = None
+            self._label = ""
 
         print(f'Using PKIPARSEC. Parsec object label = {self._label}')
         self._private_key_backup = f'{os.getcwd()}/{PKIPARSEC.PRIVATE_KEY_BAK}'
@@ -40,7 +40,7 @@ class PKIPARSEC():
         """ Creates a certificate signing request from a new private key """
         try:
             # Generate new label name.
-            if self._label != None:
+            if self._label != "":
                 # Derive new label name from existing label name.
                 label_backup = self._label
                 self._label = ''.join(random.choices(label_backup, k=5)) + ''.join(random.choices(label_backup, k=5))
@@ -60,23 +60,30 @@ class PKIPARSEC():
             )
 
             print(f'Generating CSR using new private key')
-            new_csr_pem = subprocess.run(
+            csr_output = subprocess.run(
                 [
                     self._parsec_tool_path,
                     "create-csr",
                     "--key-name",
                     self._label,
-                    "--cn AWS IoT Certificate",
-                    "--ou Amazon Web Services",
-                    "--o Amazon.com",
-                    "--l Seattle",
-                    "--st Washington",
-                    "--c US"
+                    "--cn",
+                    "AWS IoT Certificate",
+                    "--ou",
+                    "Amazon Web Services",
+                    "--o",
+                    "Amazon.com",
+                    "--l",
+                    "Seattle",
+                    "--st",
+                    "Washington",
+                    "--c",
+                    "US"
                 ],
                 check=True,
                 stdout=subprocess.PIPE,
                 text=True
             )
+            new_csr_pem = csr_output.stdout.strip()
         except Exception as error:
             print(f'Error creating the CSR: {repr(error)}.')
             traceback.print_exc()
@@ -88,7 +95,7 @@ class PKIPARSEC():
         """ Rotates from the old to new certificate and private key """
         try:
             # Backup the existing certificate (, private key) and label
-            if self._label_backup == None:
+            if self._label_backup == "":
                 shutil.copy2(self._private_key_path, self._private_key_backup)
             shutil.copy2(self._certificate_file_path, self._certificate_backup)
             with open(self._label_backup_path, 'w', encoding='utf-8') as label_bak_file:
@@ -122,7 +129,8 @@ class PKIPARSEC():
             shutil.copy2(self._certificate_backup, self._certificate_file_path)
 
             config = self._effective_config.yaml_configuration()
-            if self._label_backup == None:
+            if self._label_backup == "":
+                self._label = 'gg_key'
                 shutil.copy2(self._private_key_backup, self._private_key_path)
                 os.remove(self._private_key_backup)
                 config['system']['certificateFilePath'] = f'{self._certificate_file_path}'
@@ -168,7 +176,7 @@ class PKIPARSEC():
             with open(self._label_backup_path, 'r', encoding='utf-8') as label_bak_file:
                 self._label_backup = label_bak_file.read()
 
-            if self._label_backup == None:
+            if self._label_backup == "":
                 os.remove(self._private_key_backup)
             else:
                 subprocess.run(
