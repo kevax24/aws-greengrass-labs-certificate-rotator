@@ -1,0 +1,12 @@
+[Unit]
+Description=Generate and change default root password on first boot only
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /root/restart_greengrass.sh
+StandardOutput=append:/root/restart_gg.log
+StandardError=append:/root/restart_gg.log
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

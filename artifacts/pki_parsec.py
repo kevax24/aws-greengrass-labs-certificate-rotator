@@ -5,6 +5,7 @@ Public Key Infrastructure (PKI) for HSM storage with Parsec
 
 import os
 import shutil
+import string
 import subprocess
 import random
 import traceback
@@ -42,8 +43,8 @@ class PKIPARSEC():
             # Generate new label name.
             if self._label != "":
                 # Derive new label name from existing label name.
-                label_backup = self._label
-                self._label = ''.join(random.choices(label_backup, k=5)) + ''.join(random.choices(label_backup, k=5))
+                random_string = string.ascii_letters + string.digits
+                self._label = ''.join(random.choices(random_string, k=10))
             else:
                 self._label = 'gg_key'
 
@@ -102,14 +103,14 @@ class PKIPARSEC():
                 label_bak_file.write(self._label_backup)
             
             # Write the new certificate and label
-            with open(self._certificate_file_path, 'w', encoding='utf-8') as cert_file:
+            with open("/greengrass/v2/work/com.doka.CertificateRotator/thingCert.crt", 'w', encoding='utf-8') as cert_file:
                 cert_file.write(new_cert_pem)
 
             print(f'Updating new object label in the YAML configuration')
             config = self._effective_config.yaml_configuration()
             config['system']['certificateFilePath'] = f'parsec:import={self._certificate_file_path};object={self._label};type=cert'
             config['system']['privateKeyPath'] = f'parsec:object={self._label};type=private'
-            with open(self._effective_config.yaml_file_path(), 'w') as effective_config_file:
+            with open("/greengrass/v2/work/com.doka.CertificateRotator/effectiveConfig.yaml", 'w') as effective_config_file:
                 yaml.safe_dump(config, effective_config_file)
 
             success = True
