@@ -6,8 +6,6 @@ ComponentDescription: Certificate Rotator
 ComponentPublisher: Amazon
 ComponentConfiguration:
   DefaultConfiguration:
-    keyAlgorithm: RSA-2048
-    signingAlgorithm: SHA256WITHRSA
     accessControl:
       aws.greengrass.ipc.mqttproxy:
         com.doka.CertificateRotator:mqttproxy:1:
@@ -41,9 +39,7 @@ Manifests:
 - Platform:
     os: linux
   Lifecycle:
-    Install:
-      # If the Python cryptography package wheel has to be built, the install
-      # can take several minutes. Normally though, we use a pre-built wheel. 
+    Install: 
       Timeout: 900
       RequiresPrivilege: true
       Script: |-
@@ -56,7 +52,6 @@ Manifests:
         echo Upgrading pip
         pip install pip --upgrade
         echo Installing package requirements
-        cp -r {artifacts:decompressedPath}/com.doka.CertificateRotator/ /home/ggc_user/
         pip3 install -r {artifacts:decompressedPath}/com.doka.CertificateRotator/com.doka.CertificateRotator/requirements.txt
     Run:
       RequiresPrivilege: true
@@ -81,10 +76,10 @@ Manifests:
         if [ $EC -eq 0 ] ; then
             echo Restarting the Greengrass service ...
             cp {artifacts:decompressedPath}/com.doka.CertificateRotator/com.doka.CertificateRotator/restart_greengrass.sh /root/restart_greengrass.sh
+            chmod +x /root/restart_greengrass.sh
             cp {artifacts:decompressedPath}/com.doka.CertificateRotator/com.doka.CertificateRotator/restart_gg.service /etc/systemd/system/restart_gg.service
-            ln -s /etc/systemd/system/restart_gg.service /etc/systemd/system/multi-user.target.wants/restart_gg.service
-            sudo systemctl enable restart_gg.service
-            sudo systemctl start restart_gg.service
+            systemctl enable restart_gg.service
+            systemctl start restart_gg.service
         fi
   Artifacts:
   - Uri: s3://cloudgateway-ktmvdevices-56k/com.doka.CertificateRotator/0.0.1/com.doka.CertificateRotator.zip

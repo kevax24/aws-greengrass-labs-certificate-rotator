@@ -20,6 +20,7 @@ class StateCreatingCertificate(State):
             self._context.stop()
         elif topic == f'{TOPIC_BASE_CERT}/create/rejected':
             print('Create rejected.')
+            self._context.pki.delete_private_key()
             self._context.fail_the_job()
 
     def on_timeout(self) -> None:

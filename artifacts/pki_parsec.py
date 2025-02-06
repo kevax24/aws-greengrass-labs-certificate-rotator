@@ -31,7 +31,6 @@ class PKIPARSEC():
             self._label = ""
 
         print(f'Using PKIPARSEC. Parsec object label = {self._label}')
-        self._private_key_backup = f'{os.getcwd()}/{PKIPARSEC.PRIVATE_KEY_BAK}'
         self._certificate_backup = f'{os.getcwd()}/{PKIPARSEC.CERTIFICATE_BAK}'
         self._label_backup = self._label
         self._label_backup_path = f'{os.getcwd()}/{PKIPARSEC.LABEL_BAK}'
@@ -40,13 +39,9 @@ class PKIPARSEC():
     def create_csr(self) -> typing.Optional[str]:
         """ Creates a certificate signing request from a new private key """
         try:
-            # Generate new label name.
-            if self._label != "":
-                # Derive new label name from existing label name.
-                random_string = string.ascii_letters + string.digits
-                self._label = ''.join(random.choices(random_string, k=10))
-            else:
-                self._label = 'gg_key'
+            # Generate new label name
+            random_string = string.ascii_lowercase + string.digits
+            self._label = ''.join(random.choices(random_string, k=10))
 
             print(f'Generating new private key using algorithm RSA-2048')
             subprocess.run(
@@ -95,9 +90,7 @@ class PKIPARSEC():
     def rotate(self, new_cert_pem: str) -> bool:
         """ Rotates from the old to new certificate and private key """
         try:
-            # Backup the existing certificate (, private key) and label
-            if self._label_backup == "":
-                shutil.copy2(self._private_key_path, self._private_key_backup)
+            # Backup the existing certificate and label
             shutil.copy2(self._certificate_file_path, self._certificate_backup)
             with open(self._label_backup_path, 'w', encoding='utf-8') as label_bak_file:
                 label_bak_file.write(self._label_backup)
@@ -127,31 +120,21 @@ class PKIPARSEC():
             with open(self._label_backup_path, 'r', encoding='utf-8') as label_bak_file:
                 self._label_backup = label_bak_file.read()
 
-            shutil.copy2(self._certificate_backup, self._certificate_file_path)
+            shutil.copy2(self._certificate_backup, "/greengrass/v2/work/com.doka.CertificateRotator/thingCert.crt")
 
             config = self._effective_config.yaml_configuration()
             if self._label_backup == "":
                 self._label = 'gg_key'
-                shutil.copy2(self._private_key_backup, self._private_key_path)
-                os.remove(self._private_key_backup)
                 config['system']['certificateFilePath'] = f'{self._certificate_file_path}'
                 config['system']['privateKeyPath'] = f'{self._private_key_path}'
             else:
                 config['system']['certificateFilePath'] = f'parsec:import={self._certificate_file_path};object={self._label_backup};type=cert'
                 config['system']['privateKeyPath'] = f'parsec:object={self._label_backup};type=private'
 
-            with open(self._effective_config.yaml_file_path(), 'w') as effective_config_file:
+            with open("/greengrass/v2/work/com.doka.CertificateRotator/effectiveConfig.yaml", 'w') as effective_config_file:
                 yaml.safe_dump(config, effective_config_file)
 
-            subprocess.run(
-                [
-                    self._parsec_tool_path,
-                    "delete-key",
-                    "--key-name",
-                    self._label,
-                ],
-                check=True,
-            )
+            self.delete_private_key()
 
             os.remove(self._certificate_backup)
             os.remove(self._label_backup_path)
@@ -163,6 +146,22 @@ class PKIPARSEC():
             success = False
 
         return success
+    
+    def delete_private_key(self) -> None:
+        """ Deletes the new private key """
+        try:
+            subprocess.run(
+                [
+                    self._parsec_tool_path,
+                    "delete-key",
+                    "--key-name",
+                    self._label,
+                ],
+                check=True,
+            )
+        except Exception as error:
+            print(f'Error deleting private key: {repr(error)}.')
+            traceback.print_exc()
 
     def backup_exists(self) -> bool:
         """ Indicates whether the backup certificate and label exists """
@@ -177,9 +176,7 @@ class PKIPARSEC():
             with open(self._label_backup_path, 'r', encoding='utf-8') as label_bak_file:
                 self._label_backup = label_bak_file.read()
 
-            if self._label_backup == "":
-                os.remove(self._private_key_backup)
-            else:
+            if self._label_backup != "":
                 subprocess.run(
                     [
                         self._parsec_tool_path,
